@@ -8,8 +8,6 @@ $VARS[:DEV_VM_HOSTNAME] = "dev.vm"
 $VARS[:IDE_VM_IP] = "192.168.56.79"
 $VARS[:IDE_VM_HOSTNAME] = "ide.vm"
 
-$MONGO_PORT = "27017"
-
 %w[
   vagrant-vbguest
   vagrant-reload
@@ -57,10 +55,6 @@ Vagrant.configure("2") do |config|
     dev.vm.provision "shell", path: ".provisioning/common.sh", env: $VARS
     dev.vm.provision "shell", path: ".provisioning/dev.sh", env: $VARS
 
-    dev.vm.provision "docker" do |docker|
-      docker.run "mongo",
-        args: "-p #{$MONGO_PORT}:#{$MONGO_PORT}"
-    end
     # config.vm.provision :reload
   end
 
