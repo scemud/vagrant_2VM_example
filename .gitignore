@@ -1,2 +1,4 @@
 .vagrant/
 vars.rb
+node_modules
+yarn-error.log
