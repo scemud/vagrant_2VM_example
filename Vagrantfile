@@ -26,17 +26,7 @@ end
 Vagrant.configure("2") do |config|
   # check/output version of vbox guest extensions on VM
   config.vbguest.no_install = true
-
-  # use SMB synced-folder if on Windows
-  #   (circumvents vbox shared folder permissions issues)
-  if Vagrant::Util::Platform.windows? then
-    config.vm.synced_folder ".", "/vagrant", disabled: false,
-      type: "smb",
-      smb_username: $VARS[:SMB_USERNAME],
-      smb_password: $VARS[:SMB_PASSWORD]
-  else
-    config.vm.synced_folder ".", "/vagrant", disabled: false
-  end
+  config.vm.synced_folder ".", "#{$VARS[:VHOME]}/workspace", disabled: false
 
   # local development server
   config.vm.define "dev", primary: true do |dev|
