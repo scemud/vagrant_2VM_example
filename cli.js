@@ -1,9 +1,8 @@
-var Q = require('q');
 var proc = require('child_process');
 var vorpal = require('vorpal')();
 
 function shellout(cmd) {
-    return new Q.promise(function(resolve, reject, notify) {
+    return new Promise(function(resolve, reject) {
         proc.exec(cmd, function(err, stdout, stderr) {
             if (err) { reject(stderr); }
             else { resolve(stdout); }
@@ -25,7 +24,8 @@ vorpal
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
         var self = this;
-        shellout("ls -la").then(function(stdout){ self.log(stdout); })
+        shellout("ls -la")
+            .then(function(stdout){ self.log(stdout); })
     });
 
 vorpal
