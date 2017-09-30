@@ -69,7 +69,13 @@ vorpal
     .option('-d, --dev', 'development instance')
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
-
+        docker
+            .imageExists(mongoTag)
+            // .then(() => {
+                
+            // })
+            // .catch((err) => { vorpal.log(err); })
+            // .then(() => { outputTiming() });
     });
 
 vorpal
