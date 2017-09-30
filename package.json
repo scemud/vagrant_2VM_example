@@ -1,5 +1,16 @@
 {
+  "name": "workspace",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:scemud/vagrant_2VM_example.git",
+  "license": "MIT",
+
+  "scripts": {
+    "mongo:dev:start": "node cli.js mongo start --dev"
+  },
+
   "devDependencies": {
+    "q": "^1.5.0",
     "vorpal": "^1.12.0"
   }
 }

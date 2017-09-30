@@ -11,6 +11,7 @@ dnf makecache
 dnf install docker-ce -y
 usermod -aG docker vagrant
 systemctl enable docker
+systemctl start docker
 
 # configure inter-VM ssh key
 PUBKEY="$VHOME/.ssh/ide_id_rsa.pub.tmp"
