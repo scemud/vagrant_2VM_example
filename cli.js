@@ -3,12 +3,12 @@ var proc = require('child_process');
 var dockerode = require('dockerode');
 var Readable = require('stream').Readable;
 var JSONStream = require('JSONStream');
-var fs = require('fs');
+var fs = require('fs-extra');
 var moment = require('moment');
+var Rx = require('rx');
+var RxNode = require('rx-node');
 var _ = require('lodash');
 
-var mongoTag = 'mongo:2.2.7'
-var logFile = 'cli.log';
 var started = new moment();
 
 function shellout(cmd) {
@@ -20,48 +20,68 @@ function shellout(cmd) {
     });
 }
 
-function clearLog() { fs.truncateSync(logFile, 0); }
+function log(msg) { vorpal.log(` [cli] ${msg}`); }
 
-function fmt(msg) { return ` [cli] ${msg}`; }
-
-function outputTiming() {
+function logTiming() {
     let diff = new moment().diff(started, 'milliseconds');
     let duration = moment.utc(diff).format('HH:mm:ss.SS');
-    vorpal.log(fmt(`done! (${duration})\n`));
+    log(`Command complete! (${duration})\n`);
 }
 
+var mongoTag = 'mongo:2.2.7'
 var docker = new dockerode();
+
 docker.pullImage = (tag) => {
-    vorpal.log(fmt(`pulling ${tag}`));
+    let exists = () => {
+        return new Promise((resolve, reject) => {
+            log(`Image ${mongoTag} - exists?`);
 
-    return new Promise((resolve, reject) => {
-        // TODO: look into how to NOT pull if image already exists..?
-        //   if-else in Promises?  Streams from RxJs?
-        // docker.listImages(function(err, images){
-        //     let tags = _.flatMap(images, (image) => {
-        //         return image.RepoTags;
-        //     });
-        //     vorpal.log(tags);
-        // });
+            docker.listImages(function(err, images){
+                if (err) { reject(err); }
 
-        docker.pull(tag, (err, stream) => {
-            if (err) { reject(err); }
-            stream
-                .on('data', (chunk) => { /* process.stdout.write(chunk); */ })
-                .pipe(JSONStream.parse())
-                .pipe(JSONStream.stringify(false))
-                .pipe(fs.createWriteStream(logFile, {flags:'a'}))
-                .on('finish', resolve);
+                let tags = _.flatMap(images, (image) => {
+                    return image.RepoTags;
+                });
+
+                if (_.includes(tags, tag)) {
+                    log(`Image ${mongoTag} - found!`)
+                    resolve(true)
+                } else {
+                    log(`Image ${mongoTag} - missing!`)
+                    resolve(false);
+                }
+            });
         });
-    });
-}
-docker.imageExists = (tag) => {
-    docker.listImages(function(err, images){
-        let tags = _.flatMap(images, (image) => {
-            return image.RepoTags;
+    };
+
+    let pull = () => {
+        return new Promise((resolve, reject) => {
+            log(`Image ${mongoTag} - pulling`);
+
+            docker.pull(tag, (err, stream) => {
+                if (err) { reject(err); }
+                
+                let source = RxNode.fromStream(stream)
+                    .map((line) => { return JSON.parse(line); })
+                    .map((json) =>  { return JSON.stringify(json); })
+                    .map((line) => { fs.appendFile(logFile, `${line}\n`); });
+
+                let subscription = source.subscribe(
+                    () => {},
+                    (err) => { reject(err); },
+                    () => { 
+                        log(`Image ${mongoTag} - pulled`)
+                        resolve();
+                    }
+                );
+            });
         });
-        vorpal.log(tags);
-    });
+    };
+
+    return exists()
+        .then((found) => {
+            return found ? new Promise((resolve) => { resolve(); }) : pull();
+        });
 }
 
 vorpal
@@ -69,13 +89,7 @@ vorpal
     .option('-d, --dev', 'development instance')
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
-        docker
-            .imageExists(mongoTag)
-            // .then(() => {
-                
-            // })
-            // .catch((err) => { vorpal.log(err); })
-            // .then(() => { outputTiming() });
+        
     });
 
 vorpal
@@ -83,13 +97,9 @@ vorpal
     .option('-d, --dev', 'development instance')
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
-        docker
-            .pullImage(mongoTag)
-            .then(() => {
-                
-            })
-            .catch((err) => { vorpal.log(err); })
-            .then(() => { outputTiming() });
+        docker.pullImage(mongoTag)
+            .catch((err) => { log(err); })
+            .then(() => { logTiming() });
     });
 
 vorpal
@@ -97,7 +107,7 @@ vorpal
     .option('-d, --dev', 'development instance')
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
-        this.log(args);
+        
     });
 
 vorpal
@@ -105,8 +115,24 @@ vorpal
     .option('-d, --dev', 'development instance')
     .option('-t, --test', 'test instance')
     .action(function(args, cb) {
-        this.log(args);
+        
     });
 
-clearLog();
+var logFile = 'cli.log';
+function clearLog() { fs.truncateSync(logFile, 0); }
+
+var cacheFile = `${logFile}.cache`;
+function cacheLog() { fs.copySync(logFile, cacheFile); }
+
+vorpal
+    .command('log clear', 'Truncates the CLI log.')
+    .action(function(args, cb) { clearLog(); });
+
+vorpal
+    .command('log cache', 'Caches current CLI log.')
+    .action(function(args, cb) {
+        cacheLog();
+        clearLog();
+    });
+
 vorpal.parse(process.argv);
