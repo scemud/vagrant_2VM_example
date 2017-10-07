@@ -44,10 +44,10 @@ docker.pullImage = (tag) => {
                 });
 
                 if (_.includes(tags, tag)) {
-                    log(`Image ${mongoTag} - found!`)
+                    log(`Image ${mongoTag} - found`)
                     resolve(true)
                 } else {
-                    log(`Image ${mongoTag} - missing!`)
+                    log(`Image ${mongoTag} - missing`)
                     resolve(false);
                 }
             });
@@ -80,7 +80,7 @@ docker.pullImage = (tag) => {
 
     return exists()
         .then((found) => {
-            return found ? new Promise((resolve) => { resolve(); }) : pull();
+            return found ? Promise.resolve() : pull();
         });
 }
 
@@ -126,13 +126,18 @@ function cacheLog() { fs.copySync(logFile, cacheFile); }
 
 vorpal
     .command('log clear', 'Truncates the CLI log.')
-    .action(function(args, cb) { clearLog(); });
+    .action(function(args, cb) {
+        clearLog();
+        log('Log - cleared')
+        logTiming();
+    });
 
 vorpal
     .command('log cache', 'Caches current CLI log.')
     .action(function(args, cb) {
         cacheLog();
-        clearLog();
+        log('Log - cached')
+        logTiming();
     });
 
 vorpal.parse(process.argv);
